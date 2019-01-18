@@ -26,6 +26,7 @@ class FinnMamlEnv(ProxyEnv):
     def reset(self, reset_args = None):
 
         self.sim.reset() 
+
         if reset_args is not None:
             self._reset_args = reset_args
      

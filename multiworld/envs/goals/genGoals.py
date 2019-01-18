@@ -6,7 +6,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
-save_dir = '/home/russellm/multiworld/multiworld/envs/goals/'
+save_dir = '/home/russell/multiworld/multiworld/envs/goals/'
 
 
 def read_goals(fileName):
@@ -69,7 +69,7 @@ def gen_pickPlaceGoals_simple(fileName):
 
         xs = np.random.uniform(-.1, .1, size=2)
         obj_y = np.random.uniform(0.5, 0.6, size = 1)
-        goal_y = np.random.uniform(0.65, 0.75, size = 1)
+        goal_y = np.random.uniform(0.7, 0.8, size = 1)
 
 
         task['obj_init_pos'] = np.array([xs[0], obj_y ,  0.02])
@@ -84,6 +84,9 @@ def gen_pickPlaceGoals_simple(fileName):
     pickle.dump(tasks, fobj)
     fobj.close()
 
+
+
+
 def gen_pickPlaceGoals(fileName):
 
     tasks = []
@@ -91,7 +94,7 @@ def gen_pickPlaceGoals(fileName):
 
         task={}
 
-        xs = np.random.uniform(-.15, .15, size=2)
+        xs = np.random.uniform(-.1, .1, size=2)
         ys = np.random.uniform(0.5, 0.8, size = 2)
 
         task['obj_init_pos'] = np.array([xs[0], ys[0], 0.02])
@@ -122,6 +125,10 @@ def visualize_pickPlace(fileName, xRange = [-.15, .15], yRange=[0.5, 0.8]):
     plt.ylim(yRange[0], yRange[1])
 
     plt.savefig(fileName+'.png')
+
+gen_pickPlaceGoals_simple('pickPlace_20X20_v1_val')
+visualize_pickPlace('pickPlace_20X20_v1_val')
+
 
 
 def modify(oldName, newName):
@@ -178,17 +185,6 @@ def fixedDoor_diffAngles(numgoals = 20):
     fobj = open('fixedDoor_0_45deg.pkl' , 'wb' )
     pickle.dump(taskList , fobj)
     fobj.close()
-
-
-#fixedDoor_diffAngles(20)
-
-#gen_pickPlaceGoals_simple('pickPlace_20X20_v2')
-#visualize_pickPlace('pickPlace_20X20_v2')
-
-#read_goals('pickPlace_20X20')
-#read_goals('pickPlace_20X20_6_8')
-
-
 
 
 
