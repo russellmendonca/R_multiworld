@@ -8,23 +8,32 @@ from multiworld.core.multitask_env import MultitaskEnv
 from multiworld.envs.mujoco.sawyer_xyz.base import SawyerXYZEnv
 import mujoco_py
 from multiworld.envs.mujoco.cameras import *
+from pyquaternion import Quaternion
 #from mujoco_py.mjlib import mjlib
+
+def zangle_to_quat(zangle):
+    """
+    :param zangle in rad
+    :return: quaternion
+    """
+    return (Quaternion(axis=[0,1,0], angle=np.pi) * Quaternion(axis=[0, 0, -1], angle= zangle)).elements
 
 class SawyerPushEnv( SawyerXYZEnv):
     def __init__(
             self,
             obj_low=None,
             obj_high=None,
-            tasks = [{'goal': [0, 0.7, 0.02], 'obj_init_pos':[0, 0.6, 0.02]}] , 
+            tasks = [{'goal': [0, 0.7, 0.02], 'obj1_init_pos':[0, 0.6, 0.04]}] , 
+            #tasks = None,
             goal_low=None,
             goal_high=None,
-            hand_init_pos = (0, 0.4, 0.05),
+            hand_init_pos = (0, 0.5, 0.05),
             rewMode = 'posPlace',
             indicatorDist = 0.05,
             image = False,
             image_dim = 84,
             camera_name = 'robotview_zoomed',
-            max_path_length = 150,
+            mpl = 150,
             hide_goal = True,
             **kwargs
     ):
@@ -48,12 +57,12 @@ class SawyerPushEnv( SawyerXYZEnv):
 
         self.camera_name = camera_name
         self.objHeight = self.model.body_pos[-1][2]
-        assert self.objHeight != 0
-        self.max_path_length = max_path_length
+        #assert self.objHeight != 0
+        self.max_path_length = mpl
         self.image = image
 
         self.image_dim = image_dim
-    
+
         self.tasks = np.array(tasks)
         self.num_tasks = len(tasks)
         self.rewMode = rewMode
@@ -97,14 +106,20 @@ class SawyerPushEnv( SawyerXYZEnv):
       
     @property
     def model_name(self):
-        return get_asset_full_path('sawyer_xyz/sawyer_pick_and_place.xml')
+        # return get_asset_full_path('sawyer_xyz/sawyer_pick_and_place_mug.xml')
+        #return get_asset_full_path('sawyer_xyz/sawyer_pickPlace.xml')
+        self.reset_mocap_quat = zangle_to_quat(np.pi/2)
+        return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
+        #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace.xml')
+
 
     def step(self, action):
-
+        
         self.set_xyz_action(action[:3])
         self.do_simulation([0,0])
         self._set_goal_marker(self._state_goal)
         ob = self._get_obs()
+       
         reward , reachDist, placeDist  = self.compute_reward(action, ob)
         self.curr_path_length +=1
         if self.curr_path_length == self.max_path_length:
@@ -132,29 +147,31 @@ class SawyerPushEnv( SawyerXYZEnv):
                 state_achieved_goal=objPos,
             )
 
-    def render(self, mode = 'human'):
+    # def render(self, mode = 'human'):
 
-        if mode == 'human':
-            im_size = 500 ; norm = 1.0
-            self.set_goal_visibility(visible = True)
-        elif mode == 'nn':
-            im_size = self.image_dim ; norm = 255.0
-        elif mode == 'vis_nn':
-            im_size = self.image_dim ; norm = 1.0
-        else:
-            raise AssertionError('Mode must be human, nn , or vis_nn')
+    #     if mode == 'human':
+    #         im_size = 500 ; norm = 1.0
+    #         self.set_goal_visibility(visible = True)
+    #     elif mode == 'nn':
+    #         im_size = self.image_dim ; norm = 255.0
+    #     elif mode == 'vis_nn':
+    #         im_size = self.image_dim ; norm = 1.0
+    #     else:
+    #         raise AssertionError('Mode must be human, nn , or vis_nn')
 
-        if self.camera_name == 'robotview_zoomed':
-            image = self.get_image(width= im_size , height = im_size , camera_name = 'robotview_zoomed').transpose()/norm
-            image = image.reshape((3, im_size, im_size))
-            image = np.rot90(image, axes = (-2,-1))
-            final_image = np.transpose(image , [1,2,0])
-            if 'nn' in mode:
-                final_image = final_image[:48 ,10 : 74,:]
+    #     if self.camera_name == 'robotview_zoomed':
+    #         image = self.get_image(width= im_size , height = im_size , camera_name = 'robotview').transpose()/norm
+    #         image = image.reshape((3, im_size, im_size))
+    #         image = np.rot90(image, axes = (-2,-1))
+    #         final_image = np.transpose(image , [1,2,0])
+    #         if 'nn' in mode:
+    #             final_image = final_image[:48 ,10 : 74,:]
+    #         # elif 'human' in mode:
+    #         #     final_image = final_image[:285, 60: 440,:]
 
-        if self.hide_goal:
-           self.set_goal_visibility(visible = False)
-        return final_image
+    #     if self.hide_goal:
+    #        self.set_goal_visibility(visible = False)
+    #     return final_image
    
     def _get_info(self):
         pass
@@ -170,11 +187,12 @@ class SawyerPushEnv( SawyerXYZEnv):
 
     def set_goal_visibility(self , visible = False):
 
-        site_id = self.model.site_name2id('goal')
-        if visible:       
-            self.model.site_rgba[site_id][-1] = 1
-        else:
-            self.model.site_rgba[site_id][-1] = 0
+        # site_id = self.model.site_name2id('goal')
+        # if visible:       
+        #     self.model.site_rgba[site_id][-1] = 1
+        # else:
+        #     self.model.site_rgba[site_id][-1] = 0
+        pass
 
 
               
@@ -226,12 +244,21 @@ class SawyerPushEnv( SawyerXYZEnv):
     
     def change_task(self, task):
 
-        self._state_goal = task['goal']
+        if len(task['goal']) == 3:
+            self._state_goal = np.array(task['goal'])
+        else:
+            self._state_goal = np.concatenate([task['goal'] , [0.02]])
         self._set_goal_marker(self._state_goal)
-        self.obj_init_pos = task['obj_init_pos']
+
+        if len(task['obj1_init_pos']) == 3:
+            self.obj_init_pos = np.array(task['obj1_init_pos'])
+        else:
+            self.obj_init_pos = np.concatenate([task['obj1_init_pos'] , [0.02]])
+
+      
         self.origPlacingDist = np.linalg.norm( self.obj_init_pos[:2] - self._state_goal[:2])
 
-    def reset_arm_and_object(self):
+    def reset_agent_and_object(self):
 
         self._reset_hand()      
         self._set_obj_xyz(self.obj_init_pos)
@@ -240,24 +267,25 @@ class SawyerPushEnv( SawyerXYZEnv):
 
     def reset_model(self, reset_arg= None):
 
-
+    
         if reset_arg == None:
             task = self.sample_tasks(1)[0]
         else:
             assert type(reset_arg) == int
             task = self.tasks[reset_arg]
-
+       
         self.change_task(task)
-        self.reset_arm_and_object()
+        self.reset_agent_and_object()
 
         return self._get_obs()
 
     def _reset_hand(self):
-
+        import time
         for _ in range(10):
             self.data.set_mocap_pos('mocap', self.hand_init_pos)
-            self.data.set_mocap_quat('mocap', np.array([1, 0, 1, 0]))
+            self.data.set_mocap_quat('mocap', self.reset_mocap_quat)
             self.do_simulation(None, self.frame_skip)
+
 
     def get_site_pos(self, siteName):
         _id = self.model.site_names.index(siteName)
@@ -310,22 +338,21 @@ class SawyerPushEnv( SawyerXYZEnv):
 
     def log_diagnostics(self, paths = None, prefix = '', logger = None):
 
-      
+        from rllab.misc import logger
         if type(paths[0]) == dict:
+            if type(paths[0]) == dict:
+            #For SAC
+                # for key in self.info_logKeys:
+                #     nested_list = [[i[key] for i in paths[j]['env_infos']] for j in range(len(paths))]
+                #     logger.record_tabular(prefix + 'last_'+key, np.mean([_list[-1] for _list in nested_list]) )
 
-            for key in self.info_logKeys:
-                #logger.record_tabular(prefix+ 'sum_'+key, np.mean([sum(path['env_infos'][key]) for path in paths]) )
-                #logger.record_tabular(prefix+'max_'+key, np.mean([max(path['env_infos'][key]) for path in paths]) )
-                #logger.record_tabular(prefix+'min_'+key, np.mean([min(path['env_infos'][key]) for path in paths]) )
-                logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
-
+            #For TRPO
+                for key in self.info_logKeys:
+                    logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
 
         else:
             for i in range(len(paths)):
                 prefix=str(i)
                 for key in self.info_logKeys:
-                    #logger.record_tabular(prefix+ 'sum_'+key, np.mean([sum(path['env_infos'][key]) for path in paths[i]]) )
-                    #logger.record_tabular(prefix+'max_'+key, np.mean([max(path['env_infos'][key]) for path in paths[i]]) )
-                    logger.record_tabular(prefix+'min_'+key, np.mean([min(path['env_infos'][key]) for path in paths[i]]) )
                     logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths[i]]) )
 

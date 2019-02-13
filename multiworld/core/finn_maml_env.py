@@ -34,6 +34,7 @@ class FinnMamlEnv(ProxyEnv):
         if self.reset_mode == 'index':
             if self._reset_args is None:
                  self._reset_args = 0
+          
             reset_args = self.tasks[self._reset_args]
 
         elif self.reset_mode == 'task':
@@ -43,7 +44,8 @@ class FinnMamlEnv(ProxyEnv):
             reset_args = self._reset_args
         
         self.change_task(reset_args)
-        self.reset_arm_and_object()
+        #self.reset_arm_and_object()
+        self.reset_agent_and_object()
 
         if self.viewer is not None:
             self.viewer_setup()

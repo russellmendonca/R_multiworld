@@ -26,6 +26,22 @@ Usage:
         <mesh name="l5" file="sawyer/l5.stl" />
         <mesh name="l6" file="sawyer/l6.stl" />
         <mesh name="eGripperBase" file="sawyer/eGripperBase.stl" />
+
+        <mesh name="WSG50_110" file="sawyer/WSG50_110.stl" />
+        <mesh name="GUIDE_WSG50_110" file="sawyer/GUIDE_WSG50_110.stl" scale="0.001 0.001 0.001" />
+        <mesh name="WSG-FMF" file="sawyer/WSG-FMF.stl" scale="0.001 0.001 0.001" />
+
+        <texture name='wood_63' file='wood/pic_6_63.png' />
+        <material shininess = '.3' specular="1" name="wood_63" texture="wood_63" />
+
+        <texture name='wood_106' file='wood/pic_6_106.png' />
+        <material shininess = '.3' specular="1" name="wood_106" texture="wood_106" />
+
+        <texture name="metal_51" file="metal/pic_4_51.png"/>
+        <material shininess = '.3' specular="1" name="metal_51" texture="metal_51" />
+
+        <texture name="metal_165" file="metal/pic_4_165.png"/>
+        <material shininess = '.3' specular="1" name="metal_165" texture="metal_165" />
     </asset>
 
     <visual>
@@ -33,11 +49,11 @@ Usage:
     </visual>
 
    
-    <compiler inertiafromgeom="auto" angle="radian" coordinate="local"  meshdir="../meshes"/>
+    <compiler inertiafromgeom="auto" angle="radian" coordinate="local"  meshdir="../meshes" texturedir = "../textures"/>
    <!--  <compiler inertiafromgeom="auto" angle="radian" coordinate="local" eulerseq="XYZ" meshdir="../meshes"/> -->
     <size njmax="6000" nconmax="6000"/>
     <option
-            gravity="0 0 -9.81"
+            gravity="0 0 -9.8"
             iterations="50"
             integrator="Euler"
             timestep="0.01"

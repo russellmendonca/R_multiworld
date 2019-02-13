@@ -66,7 +66,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
     def __init__(
             self,
             *args,
-            hand_low=(-0.5, 0.40, 0.05),
+            hand_low=(-0.5, 0.25, 0),
             hand_high=(0.5, 1, 0.5),
             action_scale=1/100,
             action_zangle_scale = 1/10,
@@ -132,4 +132,4 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
         self.data.set_mocap_pos('mocap', new_mocap_pos)
 
-        self.data.set_mocap_quat('mocap', np.array([1, 0, 1, 0]))
+        self.data.set_mocap_quat('mocap', self.reset_mocap_quat)

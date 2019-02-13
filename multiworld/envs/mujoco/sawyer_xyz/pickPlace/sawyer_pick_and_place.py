@@ -11,7 +11,7 @@ from multiworld.envs.mujoco.sawyer_xyz.push.sawyer_push import SawyerPushEnv
 class SawyerPickPlaceEnv( SawyerPushEnv):
     def __init__(
             self,
-            tasks = [{'goal': np.array([0, 0.7, 0.02]), 'height': 0.06, 'obj_init_pos':np.array([0, 0.6, 0.02])}] , 
+            tasks = [{'goal': np.array([0, 0.7, 0.02]), 'height': 0.06, 'obj1_init_pos':np.array([0, 0.6, 0.02])}] , 
             liftThresh = 0.04,
             rewMode = 'orig',
             **kwargs
@@ -23,6 +23,7 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
             tasks = tasks,
             **kwargs
         )
+        self.info_logKeys = ['placingDist' , 'pickRew']
         self.rewMode = rewMode
         self.heightTarget = self.objHeight + liftThresh
         self.action_space = Box(
@@ -50,13 +51,23 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
         else:
             done = False
         return ob, reward, done,  OrderedDict({ 'reachRew':reachRew, 'reachDist': reachDist, 'pickRew':pickRew, 'placeRew': placeRew, 'epRew' : reward, 'placingDist': placingDist})
-                                 
+    
+
     def change_task(self, task):
-       
-        self._state_goal = task['goal']
+
+        if len(task['goal']) == 3:
+            self._state_goal = task['goal']
+        else:
+            self._state_goal = np.concatenate([task['goal'] , [0.02]])
         self._set_goal_marker(self._state_goal)
-        self.obj_init_pos = task['obj_init_pos']
+
+        if len(task['obj1_init_pos']) == 3:
+            self.obj_init_pos = task['obj1_init_pos']
+        else:
+            self.obj_init_pos = np.concatenate([task['obj1_init_pos'] , [0.02]])
+       
         self.maxPlacingDist = np.linalg.norm(np.array([self.obj_init_pos[0], self.obj_init_pos[1], self.heightTarget]) - np.array(self._state_goal)) + self.heightTarget
+
 
     def compute_reward(self, actions, obs):
                     
@@ -150,4 +161,25 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
         reward = reachRew + pickRew + placeRew
         #print(placingDist)
         return [reward, reachRew, reachDist, pickRew, placeRew, min(placingDist, self.maxPlacingDist)] 
+
+    def log_diagnostics(self, paths = None, prefix = '', logger = None):
+
+      
+        if type(paths[0]) == dict:
+
+            for key in self.info_logKeys:
+                #logger.record_tabular(prefix+ 'sum_'+key, np.mean([sum(path['env_infos'][key]) for path in paths]) )
+                logger.record_tabular(prefix+'max_'+key, np.mean([max(path['env_infos'][key]) for path in paths]) )
+                #logger.record_tabular(prefix+'min_'+key, np.mean([min(path['env_infos'][key]) for path in paths]) )
+                logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
+
+
+        else:
+            for i in range(len(paths)):
+                prefix=str(i)
+                for key in self.info_logKeys:
+                    #logger.record_tabular(prefix+ 'sum_'+key, np.mean([sum(path['env_infos'][key]) for path in paths[i]]) )
+                    logger.record_tabular(prefix+'max_'+key, np.mean([max(path['env_infos'][key]) for path in paths[i]]) )
+                    #logger.record_tabular(prefix+'min_'+key, np.mean([min(path['env_infos'][key]) for path in paths[i]]) )
+                    logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths[i]]) )
      

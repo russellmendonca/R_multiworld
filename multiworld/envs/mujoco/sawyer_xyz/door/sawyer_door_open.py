@@ -20,10 +20,12 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
             goal_low=np.array([0]),
             goal_high=np.array([1.58825]),
 
-            hand_init_pos=(0, 0.4, 0.05),
-            # hand_init_pos = (0, 0.5, 0.35) ,
-
+            #hand_init_pos=(0, 0.4, 0.05),
+            hand_init_pos = (0, 0.5, 0.3) ,
+            fixed_door_pos = (0 , 1, 0.3),
+            image = False,
             doorHalfWidth=0.2,
+            mpl = 100,
 
             **kwargs
     ):
@@ -40,12 +42,13 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         if doorGrasp_high is None:
             doorGrasp_high = self.hand_high
 
-        self.max_path_length = 150
+        self.max_path_length = mpl
 
         self.doorHalfWidth = doorHalfWidth
-        self.fixed_door_pos = np.array([0, 1, 0.3])
-
-       
+        self.fixed_door_pos = np.array([0, 1,0.3])
+        self.hand_init_pos = np.array(hand_init_pos)
+        self.info_logKeys = ['angleDelta']
+      
         import pickle
         #tasks = np.array(pickle.load(open('/home/russell/multiworld/multiworld/envs/goals/Door_60X20X20.pkl', 'rb'))) 
         #tasks = np.array(pickle.load(open('/root/code/multiworld/multiworld/envs/goals/Door_60X20X20.pkl', 'rb')))   
@@ -79,16 +82,6 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
     def model_name(self):
         return get_asset_full_path('sawyer_xyz/sawyer_door_open.xml')
 
-    def viewer_setup(self):
-        pass
-        # self.viewer.cam.trackbodyid = 0
-        # self.viewer.cam.lookat[0] = 0
-        # self.viewer.cam.lookat[1] = 1.0
-        # self.viewer.cam.lookat[2] = 0.5
-        # self.viewer.cam.distance = 0.3
-        # self.viewer.cam.elevation = -45
-        # self.viewer.cam.azimuth = 270
-        # self.viewer.cam.trackbodyid = -1
 
     def step(self, action):
 
@@ -124,6 +117,29 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
         )
 
+    def render(self, mode = 'human'):
+        self.image_dim = 84
+        if mode == 'human':
+            im_size = 500 ; norm = 1.0
+            #self.set_goal_visibility(visible = True)
+        elif mode == 'nn':
+            im_size = self.image_dim ; norm = 255.0
+        elif mode == 'vis_nn':
+            im_size = self.image_dim ; norm = 1.0
+        else:
+            raise AssertionError('Mode must be human, nn , or vis_nn')
+
+        
+        image = self.get_image(width= im_size , height = im_size , camera_name = 'door_diff').transpose()/norm
+        image = image.reshape((3, im_size, im_size))
+        image = np.rot90(image, axes = (-2,-1))
+        final_image = np.transpose(image , [1,2,0])
+        if 'nn' in mode:
+            final_image = final_image[:48 ,10 : 74,:]
+
+        return final_image
+   
+
     def _set_door_xyz(self, doorPos):
 
         self.model.body_pos[-1] = doorPos
@@ -144,7 +160,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
         # import ipdb
         # ipdb.set_trace()
-
+       
         goal_x = door_pos[0] + self.doorHalfWidth * (1 - np.cos(angle))
 
         goal_y = door_pos[1] - self.doorHalfWidth * np.sin(angle)
@@ -163,7 +179,8 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         else:
             self.door_init_pos = self.fixed_door_pos
 
-        self._set_goal_marker()
+      
+        self._set_goal_marker() 
 
     def reset_arm_and_object(self):
 
@@ -190,7 +207,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
     def _reset_hand(self):
         for _ in range(10):
-            self.data.set_mocap_pos('mocap', np.array([0, 0.5, 0.05]))
+            self.data.set_mocap_pos('mocap', self.hand_init_pos)
             self.data.set_mocap_quat('mocap', np.array([1, 0, 1, 0]))
             self.do_simulation(None, self.frame_skip)
 
@@ -237,7 +254,9 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
         doorOpenRew = doorOpenReward(doorAngle)
 
-        reward = graspRew + doorOpenRew
+        #reward = graspRew + doorOpenRew
+        
+        reward = doorOpenRew
 
         angleDelta = abs(doorAngleTarget - doorAngle)
 
@@ -249,10 +268,25 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         return statistics
 
     def log_diagnostics(self, paths=None, prefix='', logger=None):
+        from rllab.misc import logger
+        if type(paths[0]) == dict:
+            if type(paths[0]) == dict:
+            #For SAC
+                # for key in self.info_logKeys:
+                #     nested_list = [[i[key] for i in paths[j]['env_infos']] for j in range(len(paths))]
+                #     logger.record_tabular(prefix + 'last_'+key, np.mean([_list[-1] for _list in nested_list]) )
 
-        for key in paths[0]['env_infos']:
-            logger.record_tabular(prefix + 'sum_' + key, np.mean([sum(path['env_infos'][key]) for path in paths]))
-            logger.record_tabular(prefix + 'max_' + key, np.mean([max(path['env_infos'][key]) for path in paths]))
-            logger.record_tabular(prefix + 'min_' + key, np.mean([min(path['env_infos'][key]) for path in paths]))
+            #For TRPO
+                for key in self.info_logKeys:
+                    logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
+    
 
-            logger.record_tabular(prefix + 'last_' + key, np.mean([path['env_infos'][key][-1] for path in paths]))
+        else:
+            pass
+            # for i in range(len(paths)):
+            #     prefix=str(i)
+            #     for key in self.info_logKeys:
+            #         #logger.record_tabular(prefix+ 'sum_'+key, np.mean([sum(path['env_infos'][key]) for path in paths[i]]) )
+            #         #logger.record_tabular(prefix+'max_'+key, np.mean([max(path['env_infos'][key]) for path in paths[i]]) )
+            #         #logger.record_tabular(prefix+'min_'+key, np.mean([min(path['env_infos'][key]) for path in paths[i]]) )
+            #         logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths[i]]) )

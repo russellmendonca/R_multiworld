@@ -21,7 +21,7 @@ class Rl2Env(ProxyEnv):
         self.sim.reset()
 
 
-        task = self.sample_task()
+        task = self.sample_tasks(1)[0]
 
         self.change_task(task)
         self.reset_arm_and_object()
