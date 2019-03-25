@@ -1,6 +1,8 @@
 from gym.spaces import Box 
+from cached_property import cached_property
 
 from multiworld.core.serializable import Serializable
+from rllab.core.serializable import Serializable as r_Serializable
 import numpy as np
 
 class ProxyEnv(Serializable):
@@ -15,8 +17,13 @@ class ProxyEnv(Serializable):
     def __getattr__(self, attrname):
         if attrname == '_serializable_initialized':
             return None
+     
         return getattr(self._wrapped_env, attrname)
 
+
+
+
+   
 class NormalizedBoxEnv(ProxyEnv, Serializable):
     """
     Normalize action to in [-1, 1].

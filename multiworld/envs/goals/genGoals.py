@@ -199,10 +199,10 @@ def visualize_two_obj(fileName, xRange = [-.15, .15], yRange=[0.5, 0.8]):
 
 #two_obj_pushing('pickPlace_Obj2_v1')
 #visualize_two_obj('pickPlace_Obj2_v1')
-def fixedDoor_diffAngles(numgoals = 20 , fileName = 'door_60deg_val'):
+def fixedDoor_diffAngles(numgoals = 20 , fileName = 'door_60deg_val1'):
 
 	taskList = []
-	targetAngles = np.random.uniform(0, 1.0472 , 20)
+	targetAngles = np.linspace(0, 1.0472 , 20)
 	for angle in targetAngles:
 		taskList.append({'goalAngle' : angle})
 	plt.scatter(np.arange(numgoals) , targetAngles)
@@ -214,7 +214,7 @@ def fixedDoor_diffAngles(numgoals = 20 , fileName = 'door_60deg_val'):
 	pickle.dump(taskList , fobj)
 	fobj.close()
 
-#fixedDoor_diffAngles()
+fixedDoor_diffAngles()
 
 
 def push_fixedObj(fileName, numgoals = 40):
@@ -238,11 +238,11 @@ def rand_angles(fileName , numgoals = 40):
 	fobj = open(fileName+'.pkl' , 'wb')
 	pickle.dump(goals , fobj)
 
-#rand_angles('claw_2pi')
+#rand_angles('claw_2pi_val')
 
-
-
-
+#goals = np.linspace(0, 2*np.pi , 21)[:20]
+#fobj = open('claw_2pi_20tasks_equallySpaced.pkl' , 'wb')
+#pickle.dump(goals, fobj)
 
 def visualize_push(fileName, xRange = [-.15, .15], yRange=[0.5, 0.8]):
 
@@ -266,15 +266,18 @@ def ring_goals(numgoals =40):
 
 	radius = 2.0
 	#theta_list = np.random.uniform(0 , np.pi , size = numgoals)
-	theta_list = np.random.uniform(np.pi/4 , (3/4)*np.pi , size = numgoals)
+	#theta_list = np.random.uniform(0 , (1/2)*np.pi , size = numgoals)
+	theta_list = np.linspace( np.pi/4 , 3*np.pi/4 , numgoals)
 
 	goals = np.array([[radius*np.cos(theta) , radius*np.sin(theta)] for theta in theta_list ])
-	pickle.dump(goals, open('rad2_quat.pkl', 'wb'))
+	pickle.dump(goals, open('rad2_quat_v1.pkl', 'wb'))
 	plt.scatter(goals[:,0] , goals[:,1])
 
 	plt.xlim(-2.1,2.1)
 	plt.ylim(0,2.1)
-	plt.savefig('rad2_quat.png')
+	plt.savefig('rad2_quat_v1.png')
+
+#ring_goals()
 
 def vis_goals_ant():
 	goals = pickle.load(open('goals_ant.pkl' , 'rb'))

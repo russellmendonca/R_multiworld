@@ -53,7 +53,7 @@ Usage:
    <!--  <compiler inertiafromgeom="auto" angle="radian" coordinate="local" eulerseq="XYZ" meshdir="../meshes"/> -->
     <size njmax="6000" nconmax="6000"/>
     <option
-            gravity="0 0 -9.8"
+            gravity="0 0 -9.81"
             iterations="50"
             integrator="Euler"
             timestep="0.01"

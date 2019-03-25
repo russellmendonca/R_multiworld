@@ -22,8 +22,11 @@ Usage:
     <geom name="floor" type="plane" pos="0 0 -.9" size="10 10 0.5"
           rgba="0 0 0 1" contype="0" conaffinity="0" />
     <geom name="tableTop" type="box" pos="0 0.8 -0.5" size="0.4 0.4 0.5"
-          rgba=".6 .6 .5 1" contype="1" conaffinity="1" condim="3" density="6500" friction="10 0.1 0.002"/>
+        contype="1" conaffinity="1" condim="3" density="6500" friction="10 0.1 0.002" material="wood_63"/>
 
+  <!--   <geom name="tableTop" type="box" pos="0 0.8 -0.5" size="0.4 0.4 0.5"
+        contype="1" conaffinity="1" condim="3" density="6500" friction="10 0.1 0.002" rgba = ".6 .6 .5 1"/>
+ -->
     <body name="base" pos="0 0 0">
         <site name="basesite" pos="0 0 0" size="0.01" />
         <inertial pos="0 0 0" mass="0" diaginertia="0 0 0" />
@@ -122,9 +125,9 @@ Usage:
                                             <inertial pos="1e-08 1e-08 1e-08" quat="0.820473 0.339851 -0.17592 0.424708" mass="1e-08" diaginertia="1e-08 1e-08 1e-08" />
                                             
 
-                                            <geom type="mesh" contype="1" conaffinity="1" group="1" rgba="0.5 0.1 0.1 1" pos= "0 0 0.03" mesh="eGripperBase" />
+                                            <geom type="mesh" contype="1" conaffinity="1" group="1" rgba="0.5 0.1 0.1 1" pos= "0 0 0.03" mesh="eGripperBase" quat='1 0 0 1'/>
                                             
-                                            <geom size="0.035 0.014" pos="0 0 0.015" type="cylinder" rgba="0 0 0 1"/>
+                                            <geom size="0.035 0.015" pos="0 0 0.015" type="cylinder" rgba="0 1 1 1"/>
 
 <!--  ================= BEGIN GRIPPER ================= /-->
                                                 
@@ -132,7 +135,8 @@ Usage:
                                             <!-- body name="hand" pos="0 0 0.12" quat="-1 0 1 0"-->
 
                                             <body name="hand" pos="0 0 0.12" quat="-1 0 1 0">
-
+                                            <!-- <body name='hand' pos="0 0 0.12">
+ -->
                                                 <site name="endEffector" pos="0.04 0 0" size="0.01" rgba="0 0 0 0"/>
 
                                                <!--  <geom name="rail" type="box" pos="-0.05 0 0" density="7850" size="0.005 0.055 0.005" friction="0.001 0.005 0.0001" rgba="0.5 0.5 0.5 1.0" /> -->
@@ -140,7 +144,9 @@ Usage:
                                                 
                                                 <body name="rightclaw" pos="0 -0.05 0" >
 
-                                                    <geom name="rightclaw_it" condim="4" margin="0.001" type="box" user="0" pos="0 0 0" size="0.045 0.005 0.015"  rgba="1 1 1 1.0" />
+                                                    <geom name="rightclaw_it" condim="4" margin="0.001" type="box" user="0" pos="0 0 0" size="0.045 0.005 0.015"  rgba="0.2 0.2 0.2 1" />
+                                                   <!--  <geom name="rightclaw_it" condim="4" margin="0.001" type="box" user="0" pos="0 0 0" size="0.045 0.005 0.015"  rgba="1 1 1 1" /> -->
+
                                                    <!--  <joint name="r_close" pos="0 0 0" axis="0 1 0" range= "0 0.03" armature="100" damping="1000" limited="true" solimplimit="0.99 0.999 0.01" solreflimit="0.01 1" type="slide"/> -->
                                                     <joint name="r_close" pos="0 0 0" axis="0 1 0" range= "0 0.04" armature="100" damping="1000" limited="true"  type="slide"/> 
 
@@ -148,7 +154,9 @@ Usage:
                                                 </body>
 
                                                 <body name="leftclaw" pos="0 0.05 0">   
-                                                    <geom name="leftclaw_it" condim="4" margin="0.001" type="box" user="0" pos="0 0 0" size="0.045 0.005 0.015"  rgba="0 1 1 1.0" />
+                                                    <geom name="leftclaw_it" condim="4" margin="0.001" type="box" user="0" pos="0 0 0" size="0.045 0.005 0.015"  rgba="0.2 0.2 0.2 1" />
+                                                   <!--  <geom name="leftclaw_it" condim="4" margin="0.001" type="box" user="0" pos="0 0 0" size="0.045 0.005 0.015"  rgba="0 1 1 1" /> -->
+
                                                    <!--  <joint name="l_close" pos="0 0 0" axis="0 1 0" range= "-0.03 0" armature="100" damping="1000" limited="true" solimplimit="0.99 0.999 0.01" solreflimit="0.01 1" type="slide"/> -->
 
                                                     <joint name="l_close" pos="0 0 0" axis="0 1 0" range= "-0.03 0" armature="100" damping="1000" limited="true"  type="slide"/>

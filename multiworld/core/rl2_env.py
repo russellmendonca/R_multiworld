@@ -24,7 +24,8 @@ class Rl2Env(ProxyEnv):
         task = self.sample_tasks(1)[0]
 
         self.change_task(task)
-        self.reset_arm_and_object()
+        self.reset_agent_and_object()
+
 
         if self.viewer is not None:
             self.viewer_setup()
@@ -36,7 +37,8 @@ class Rl2Env(ProxyEnv):
     def reset(self):
 
         self.sim.reset()       
-        self.reset_arm_and_object()
+        self.reset_agent_and_object()
+
 
         if self.viewer is not None:
             self.viewer_setup()

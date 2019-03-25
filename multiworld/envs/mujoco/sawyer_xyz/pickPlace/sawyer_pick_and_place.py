@@ -6,7 +6,14 @@ from multiworld.envs.env_util import get_stat_in_paths, \
     create_stats_ordered_dict, get_asset_full_path
 from multiworld.core.multitask_env import MultitaskEnv
 from multiworld.envs.mujoco.sawyer_xyz.push.sawyer_push import SawyerPushEnv
+from pyquaternion import Quaternion
 
+def zangle_to_quat(zangle):
+    """
+    :param zangle in rad
+    :return: quaternion
+    """
+    return (Quaternion(axis=[0,1,0], angle=np.pi) * Quaternion(axis=[0, 0, -1], angle= zangle)).elements
 
 class SawyerPickPlaceEnv( SawyerPushEnv):
     def __init__(
@@ -31,11 +38,19 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
             np.array([1, 1, 1, 1]),
         )
 
+    @property
+    def model_name(self):
+       
+        #return get_asset_full_path('sawyer_xyz/sawyer_pickPlace.xml')
+        self.reset_mocap_quat = zangle_to_quat(np.pi/2) #this is the reset_mocap_quat for wsg grippers
+        #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
+        return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace.xml')
+
     def _reset_hand(self):
 
         for _ in range(10):
             self.data.set_mocap_pos('mocap', self.hand_init_pos)
-            self.data.set_mocap_quat('mocap', np.array([1, 0, 1, 0]))
+            self.data.set_mocap_quat('mocap', self.reset_mocap_quat)
             self.do_simulation([-1,1], self.frame_skip)
     
     def step(self, action):
@@ -55,6 +70,7 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
 
     def change_task(self, task):
 
+
         if len(task['goal']) == 3:
             self._state_goal = task['goal']
         else:
@@ -65,7 +81,7 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
             self.obj_init_pos = task['obj1_init_pos']
         else:
             self.obj_init_pos = np.concatenate([task['obj1_init_pos'] , [0.02]])
-       
+        
         self.maxPlacingDist = np.linalg.norm(np.array([self.obj_init_pos[0], self.obj_init_pos[1], self.heightTarget]) - np.array(self._state_goal)) + self.heightTarget
 
 
@@ -164,9 +180,20 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
 
     def log_diagnostics(self, paths = None, prefix = '', logger = None):
 
-      
+        from rllab.misc import logger
         if type(paths[0]) == dict:
+            
+            # if isinstance(paths[0]['env_infos'][0] , OrderedDict):
+            #     #For SAC
+            #     for key in self.info_logKeys:
+            #         nested_list = [[i[key] for i in paths[j]['env_infos']] for j in range(len(paths))]
+            #         logger.record_tabular(prefix + 'max_'+key, np.mean([max(_list) for _list in nested_list]) )
+            #         logger.record_tabular(prefix + 'last_'+key, np.mean([_list[-1] for _list in nested_list]) )
 
+
+
+            
+            #For TRPO
             for key in self.info_logKeys:
                 #logger.record_tabular(prefix+ 'sum_'+key, np.mean([sum(path['env_infos'][key]) for path in paths]) )
                 logger.record_tabular(prefix+'max_'+key, np.mean([max(path['env_infos'][key]) for path in paths]) )
@@ -174,7 +201,10 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
                 logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
 
 
+
+
         else:
+
             for i in range(len(paths)):
                 prefix=str(i)
                 for key in self.info_logKeys:
@@ -182,4 +212,5 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
                     logger.record_tabular(prefix+'max_'+key, np.mean([max(path['env_infos'][key]) for path in paths[i]]) )
                     #logger.record_tabular(prefix+'min_'+key, np.mean([min(path['env_infos'][key]) for path in paths[i]]) )
                     logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths[i]]) )
-     
+        
+

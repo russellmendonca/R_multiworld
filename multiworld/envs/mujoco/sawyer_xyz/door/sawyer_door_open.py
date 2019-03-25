@@ -47,7 +47,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         self.doorHalfWidth = doorHalfWidth
         self.fixed_door_pos = np.array([0, 1,0.3])
         self.hand_init_pos = np.array(hand_init_pos)
-        self.info_logKeys = ['angleDelta']
+        self.info_logKeys = ['angleDelta' , 'doorAngle' , 'doorAngleTarget']
       
         import pickle
         #tasks = np.array(pickle.load(open('/home/russell/multiworld/multiworld/envs/goals/Door_60X20X20.pkl', 'rb'))) 
@@ -80,6 +80,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
     @property
     def model_name(self):
+        self.reset_mocap_quat = [1,0,1,0]
         return get_asset_full_path('sawyer_xyz/sawyer_door_open.xml')
 
 
@@ -94,14 +95,14 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
         ob = self._get_obs()
 
-        reward, doorOpenRew, angleDelta = self.compute_reward(action, ob)
+        reward, doorOpenRew, angleDelta , doorAngle , doorAngleTarget = self.compute_reward(action, ob)
         self.curr_path_length += 1
 
         if self.curr_path_length == self.max_path_length:
             done = True
         else:
             done = False
-        return ob, reward, done, {'doorOpenRew': doorOpenRew, 'epRew': reward, 'angleDelta': angleDelta}
+        return ob, reward, done, {'doorOpenRew': doorOpenRew, 'epRew': reward, 'angleDelta': angleDelta , 'doorAngle': doorAngle , 'doorAngleTarget': doorAngleTarget}
 
     def _get_obs(self):
         e = self.get_endeff_pos()
@@ -182,7 +183,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
       
         self._set_goal_marker() 
 
-    def reset_arm_and_object(self):
+    def reset_agent_and_object(self):
 
         self._reset_hand()
 
@@ -208,7 +209,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
     def _reset_hand(self):
         for _ in range(10):
             self.data.set_mocap_pos('mocap', self.hand_init_pos)
-            self.data.set_mocap_quat('mocap', np.array([1, 0, 1, 0]))
+            self.data.set_mocap_quat('mocap', np.array(self.reset_mocap_quat))
             self.do_simulation(None, self.frame_skip)
 
     def get_site_pos(self, siteName):
@@ -260,7 +261,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
         angleDelta = abs(doorAngleTarget - doorAngle)
 
-        return [reward, doorOpenRew, angleDelta]
+        return [reward, doorOpenRew, angleDelta , doorAngle , doorAngleTarget]
 
     def get_diagnostics(self, paths, prefix=''):
         statistics = OrderedDict()
@@ -278,7 +279,8 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
             #For TRPO
                 for key in self.info_logKeys:
-                    logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
+                    if key in paths[0]['env_infos']:
+                        logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
     
 
         else:

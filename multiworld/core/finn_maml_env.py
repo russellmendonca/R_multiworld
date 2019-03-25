@@ -35,15 +35,16 @@ class FinnMamlEnv(ProxyEnv):
             if self._reset_args is None:
                  self._reset_args = 0
           
-            reset_args = self.tasks[self._reset_args]
+            task_reset_args = self.tasks[self._reset_args]
 
         elif self.reset_mode == 'task':
            
             if self._reset_args is None:
                  self._reset_args = self.tasks[0]
-            reset_args = self._reset_args
+            task_reset_args = self._reset_args
+
         
-        self.change_task(reset_args)
+        self.change_task(task_reset_args)
         #self.reset_arm_and_object()
         self.reset_agent_and_object()
 

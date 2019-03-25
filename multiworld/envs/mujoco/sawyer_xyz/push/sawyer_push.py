@@ -23,11 +23,11 @@ class SawyerPushEnv( SawyerXYZEnv):
             self,
             obj_low=None,
             obj_high=None,
-            tasks = [{'goal': [0, 0.7, 0.02], 'obj1_init_pos':[0, 0.6, 0.04]}] , 
+            tasks = [{'goal': [0, 0.7, 0.02], 'obj1_init_pos':[0, 0.6, 0.02]}] , 
             #tasks = None,
             goal_low=None,
             goal_high=None,
-            hand_init_pos = (0, 0.5, 0.05),
+            hand_init_pos = (0, 0.4, 0.05),
             rewMode = 'posPlace',
             indicatorDist = 0.05,
             image = False,
@@ -106,10 +106,13 @@ class SawyerPushEnv( SawyerXYZEnv):
       
     @property
     def model_name(self):
-        # return get_asset_full_path('sawyer_xyz/sawyer_pick_and_place_mug.xml')
-        #return get_asset_full_path('sawyer_xyz/sawyer_pickPlace.xml')
-        self.reset_mocap_quat = zangle_to_quat(np.pi/2)
-        return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
+        
+        self.reset_mocap_quat = [1,0,1,0]
+        return get_asset_full_path('sawyer_xyz/sawyer_pick_and_place.xml')
+
+        ############################# WSG GRIPPER #############################
+        #self.reset_mocap_quat = zangle_to_quat(np.pi/2) 
+        #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
         #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace.xml')
 
 
@@ -147,31 +150,32 @@ class SawyerPushEnv( SawyerXYZEnv):
                 state_achieved_goal=objPos,
             )
 
-    # def render(self, mode = 'human'):
+    def render(self, mode = 'human'):
 
-    #     if mode == 'human':
-    #         im_size = 500 ; norm = 1.0
-    #         self.set_goal_visibility(visible = True)
-    #     elif mode == 'nn':
-    #         im_size = self.image_dim ; norm = 255.0
-    #     elif mode == 'vis_nn':
-    #         im_size = self.image_dim ; norm = 1.0
-    #     else:
-    #         raise AssertionError('Mode must be human, nn , or vis_nn')
+        if mode == 'human':
+            im_size = 500 ; norm = 1.0
+            self.set_goal_visibility(visible = True)
+        elif mode == 'nn':
+            im_size = self.image_dim ; norm = 255.0
+        elif mode == 'vis_nn':
+            im_size = self.image_dim ; norm = 1.0
+        else:
+            raise AssertionError('Mode must be human, nn , or vis_nn')
 
-    #     if self.camera_name == 'robotview_zoomed':
-    #         image = self.get_image(width= im_size , height = im_size , camera_name = 'robotview').transpose()/norm
-    #         image = image.reshape((3, im_size, im_size))
-    #         image = np.rot90(image, axes = (-2,-1))
-    #         final_image = np.transpose(image , [1,2,0])
-    #         if 'nn' in mode:
-    #             final_image = final_image[:48 ,10 : 74,:]
-    #         # elif 'human' in mode:
-    #         #     final_image = final_image[:285, 60: 440,:]
+        if self.camera_name == 'robotview_zoomed':
+           
+            image = self.get_image(width= im_size , height = im_size , camera_name = 'robotview_zoomed').transpose()/norm
+            image = image.reshape((3, im_size, im_size))
+            image = np.rot90(image, axes = (-2,-1))
+            final_image = np.transpose(image , [1,2,0])
+            if 'nn' in mode:
+                final_image = final_image[:48 ,10 : 74,:]
+            # elif 'human' in mode:
+            #     final_image = final_image[:285, 60: 440,:]
 
-    #     if self.hide_goal:
-    #        self.set_goal_visibility(visible = False)
-    #     return final_image
+        if self.hide_goal:
+           self.set_goal_visibility(visible = False)
+        return final_image
    
     def _get_info(self):
         pass
@@ -212,21 +216,11 @@ class SawyerPushEnv( SawyerXYZEnv):
         self._set_obj_xyz(objPos)
         
 
-    def sample_goals(self, batch_size):
-      
-        goals = []
-        for i in range(batch_size):
-           
-            task = self.tasks[np.random.randint(0, self.num_tasks)]
-            goals.append(task['goal'])
-
-        return { 
-            'state_desired_goal': goals,
-        }
+   
 
     def sample_tasks(self, num_tasks):
 
-        indices = np.random.choice(np.arange(self.num_tasks), num_tasks)
+        indices = np.random.choice(np.arange(self.num_tasks), num_tasks , replace = False)
         return self.tasks[indices]
 
     # def adjust_goalPos(self, orig_goal_pos):
@@ -273,7 +267,8 @@ class SawyerPushEnv( SawyerXYZEnv):
         else:
             assert type(reset_arg) == int
             task = self.tasks[reset_arg]
-       
+
+        self.current_task = task
         self.change_task(task)
         self.reset_agent_and_object()
 
@@ -341,12 +336,16 @@ class SawyerPushEnv( SawyerXYZEnv):
         from rllab.misc import logger
         if type(paths[0]) == dict:
             if type(paths[0]) == dict:
-            #For SAC
+                #For SAC
+               
+                #if isinstance(paths[0]['env_infos'][0] , OrderedDict):
                 # for key in self.info_logKeys:
                 #     nested_list = [[i[key] for i in paths[j]['env_infos']] for j in range(len(paths))]
                 #     logger.record_tabular(prefix + 'last_'+key, np.mean([_list[-1] for _list in nested_list]) )
 
-            #For TRPO
+                
+               
+                #For TRPO
                 for key in self.info_logKeys:
                     logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
 
