@@ -23,7 +23,7 @@ class SawyerPushEnv( SawyerXYZEnv):
             self,
             obj_low=None,
             obj_high=None,
-            tasks = [{'goal': [0, 0.7, 0.02], 'obj1_init_pos':[0, 0.6, 0.02]}] , 
+            tasks = [{'goal': [0, 0.7, 0.02], 'obj_init_pos':[0, 0.6, 0.02]}] , 
             #tasks = None,
             goal_low=None,
             goal_high=None,
@@ -244,10 +244,10 @@ class SawyerPushEnv( SawyerXYZEnv):
             self._state_goal = np.concatenate([task['goal'] , [0.02]])
         self._set_goal_marker(self._state_goal)
 
-        if len(task['obj1_init_pos']) == 3:
-            self.obj_init_pos = np.array(task['obj1_init_pos'])
+        if len(task['obj_init_pos']) == 3:
+            self.obj_init_pos = np.array(task['obj_init_pos'])
         else:
-            self.obj_init_pos = np.concatenate([task['obj1_init_pos'] , [0.02]])
+            self.obj_init_pos = np.concatenate([task['obj_init_pos'] , [0.02]])
 
       
         self.origPlacingDist = np.linalg.norm( self.obj_init_pos[:2] - self._state_goal[:2])
