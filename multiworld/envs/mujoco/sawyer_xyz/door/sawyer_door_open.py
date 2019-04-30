@@ -156,16 +156,12 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
     def _set_goal_marker(self):
 
         angle = self._state_goal
-
         door_pos = self.door_init_pos
 
         # import ipdb
         # ipdb.set_trace()
-       
         goal_x = door_pos[0] + self.doorHalfWidth * (1 - np.cos(angle))
-
         goal_y = door_pos[1] - self.doorHalfWidth * np.sin(angle)
-
         goalSitePos = np.array([goal_x, goal_y, door_pos[2]])
 
         self.data.site_xpos[self.model.site_name2id('goal')] = (
@@ -203,7 +199,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
 
         self.change_task(task)
-        self.reset_arm_and_object()
+        self.reset_agent_and_object()
         return self._get_obs()
 
     def _reset_hand(self):
@@ -255,9 +251,9 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
 
         doorOpenRew = doorOpenReward(doorAngle)
 
-        #reward = graspRew + doorOpenRew
+        reward = graspRew + doorOpenRew
         
-        reward = doorOpenRew
+        #reward = doorOpenRew
 
         angleDelta = abs(doorAngleTarget - doorAngle)
 

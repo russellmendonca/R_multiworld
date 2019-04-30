@@ -35,11 +35,14 @@ class SawyerPushEnv( SawyerXYZEnv):
             camera_name = 'robotview_zoomed',
             mpl = 150,
             hide_goal = True,
+            hand_type = 'parallel_v1',
             **kwargs
     ):
-        self.quick_init(locals())        
+        self.quick_init(locals()) 
+        self.hand_type = hand_type       
         SawyerXYZEnv.__init__(
             self,
+            hand_type = self.hand_type,
             model_name=self.model_name,
             **kwargs
         )
@@ -56,7 +59,7 @@ class SawyerPushEnv( SawyerXYZEnv):
             goal_high = self.hand_high
 
         self.camera_name = camera_name
-        self.objHeight = self.model.body_pos[-1][2]
+        #self.objHeight = self.model.body_pos[-1][2]
         #assert self.objHeight != 0
         self.max_path_length = mpl
         self.image = image
@@ -106,17 +109,21 @@ class SawyerPushEnv( SawyerXYZEnv):
       
     @property
     def model_name(self):
-        
-        self.reset_mocap_quat = [1,0,1,0]
-        return get_asset_full_path('sawyer_xyz/sawyer_pick_and_place.xml')
+        #Remember to set the right limits in the base file (right line needs to be commented out)
+        if self.hand_type == 'parallel_v1':
+            self.reset_mocap_quat = [1,0,1,0]
+            return get_asset_full_path('sawyer_xyz/sawyer_pick_and_place.xml')
 
         ############################# WSG GRIPPER #############################
-        #self.reset_mocap_quat = zangle_to_quat(np.pi/2) 
-        #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
-        #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace.xml')
+        elif self.hand_type == 'weiss':
+            self.reset_mocap_quat = zangle_to_quat(np.pi/2) 
+            #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
+            return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace.xml')
 
 
     def step(self, action):
+
+      
         
         self.set_xyz_action(action[:3])
         self.do_simulation([0,0])
@@ -235,9 +242,12 @@ class SawyerPushEnv( SawyerXYZEnv):
     #     #The convention we follow is that body_com[2] is always 0, and geom_pos[2] is the object height
     #     return [adjustedPos[0], adjustedPos[1], 0]
 
-    
-    def change_task(self, task):
+    def reset_task(self, task):
+        self.change_task(task)
 
+
+    def change_task(self, task):
+       
         if len(task['goal']) == 3:
             self._state_goal = np.array(task['goal'])
         else:
@@ -248,8 +258,9 @@ class SawyerPushEnv( SawyerXYZEnv):
             self.obj_init_pos = np.array(task['obj_init_pos'])
         else:
             self.obj_init_pos = np.concatenate([task['obj_init_pos'] , [0.02]])
-
-      
+       
+        import ipdb
+        ipdb.set_trace()
         self.origPlacingDist = np.linalg.norm( self.obj_init_pos[:2] - self._state_goal[:2])
 
     def reset_agent_and_object(self):
@@ -261,7 +272,6 @@ class SawyerPushEnv( SawyerXYZEnv):
 
     def reset_model(self, reset_arg= None):
 
-    
         if reset_arg == None:
             task = self.sample_tasks(1)[0]
         else:

@@ -13,25 +13,33 @@ def zangle_to_quat(zangle):
     :param zangle in rad
     :return: quaternion
     """
-    return (Quaternion(axis=[0,1,0], angle=np.pi) * Quaternion(axis=[0, 0, -1], angle= zangle)).elements
-
-class SawyerPickPlaceEnv( SawyerPushEnv):
+    #return (Quaternion(axis=[0,1,0], angle=np.pi) * Quaternion(axis=[0, 0, -1], angle= zangle)).elements
+    return (Quaternion(axis=[0,0,1], angle=np.pi) * Quaternion(axis=[-1, 0, 0], angle= zangle)).elements
+    #return (Quaternion(axis=[1,0,0], angle=np.pi) * Quaternion(axis=[0, -1, 0], angle= zangle)).elements
+    #return (Quaternion(axis=[1,0,0], angle=np.pi) * Quaternion(axis=[-1, 0, 0], angle= zangle)).elements #fail
+    #return (Quaternion(axis=[0,0,1], angle=np.pi) * Quaternion(axis=[0, -1, 0], angle= zangle)).elements
+class SawyerCoffeeEnv( SawyerPushEnv):
     def __init__(
             self,
-            tasks = [{'goal': np.array([0, 0.7, 0.02]), 'height': 0.06, 'obj1_init_pos':np.array([0, 0.6, 0.02])}] , 
+            tasks = [{'goal': np.array([0, 0.9, 0.05]), 'height': 0.06, 'obj_init_pos':np.array([0, 0.6, 0.04])}] , 
+            hand_type = 'weiss',
             liftThresh = 0.04,
             rewMode = 'orig',
             **kwargs
     ):
   
-        self.quick_init(locals())  
+        self.quick_init(locals())
+        self.hand_type = hand_type  
         SawyerPushEnv.__init__(
             self,
             tasks = tasks,
+            hand_type = hand_type,
             **kwargs
         )
+        self.camera_name = 'angled_cam'
         self.info_logKeys = ['placingDist' , 'pickRew']
         self.rewMode = rewMode
+        self.objHeight = 0.04
         self.heightTarget = self.objHeight + liftThresh
         self.action_space = Box(
             np.array([-1, -1, -1, -1]),
@@ -42,12 +50,16 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
     def model_name(self):
        
         #return get_asset_full_path('sawyer_xyz/sawyer_pickPlace.xml')
-        self.reset_mocap_quat = zangle_to_quat(np.pi/2) #this is the reset_mocap_quat for wsg grippers
-        #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
-        return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace.xml')
+        #self.reset_mocap_quat = zangle_to_quat(np.pi/2) #this is the reset_mocap_quat for wsg grippers
+    
+        #self.reset_mocap_quat = zangle_to_quat(-np.pi/2)
+
+        init_quat = [1,0,0,1]
+       
+        self.reset_mocap_quat = (Quaternion(axis= [1,0,0] , angle = -np.pi/2)*Quaternion(init_quat)).elements
+        return get_asset_full_path('sawyer_xyz/sawyer_wsg_coffee.xml')
 
     def _reset_hand(self):
-
         for _ in range(10):
             self.data.set_mocap_pos('mocap', self.hand_init_pos)
             self.data.set_mocap_quat('mocap', self.reset_mocap_quat)
@@ -55,10 +67,24 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
     
     def step(self, action):
         
-        action = [0,0,-1 , -1]
         self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]])
-        #self.do_simulation([1,-1])
+        
+        #For simple grasp
+        grasp_control = np.random.uniform(-1,1)
+        self.do_simulation([grasp_control , -grasp_control])
+        # if self.get_endeff_pos()[-1] <= .06:
+        #     print("should grasp")
+        #     self.do_simulation([1,-1])
+        # else:
+        #     self.do_simulation([0, 0])
+        
+        # #For grasp and lift
+        # if self.curr_path_length>=10:
+        #     self.do_simulation([1,-1])
+        # else:
+        #     self.do_simulation([-1,1])
+
+
         self._set_goal_marker(self._state_goal)
         ob = self._get_obs()
         reward , reachRew, reachDist, pickRew, placeRew , placingDist = self.compute_reward(action, ob)
@@ -79,12 +105,43 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
             self._state_goal = np.concatenate([task['goal'] , [0.02]])
         self._set_goal_marker(self._state_goal)
 
-        if len(task['obj1_init_pos']) == 3:
-            self.obj1_init_pos = task['obj1_init_pos']
+        if len(task['obj_init_pos']) == 3:
+            self.obj_init_pos = task['obj_init_pos']
         else:
-            self.obj1_init_pos = np.concatenate([task['obj1_init_pos'] , [0.02]])
+            self.obj_init_pos = np.concatenate([task['obj_init_pos'] , [0.02]])
         
-        self.maxPlacingDist = np.linalg.norm(np.array([self.obj1_init_pos[0], self.obj1_init_pos[1], self.heightTarget]) - np.array(self._state_goal)) + self.heightTarget
+        self.maxPlacingDist = np.linalg.norm(np.array([self.obj_init_pos[0], self.obj_init_pos[1], self.heightTarget]) - np.array(self._state_goal)) + self.heightTarget
+
+
+
+    def render(self, mode = 'human'):
+
+        if mode == 'human':
+            im_size = 500 ; norm = 1.0
+            self.set_goal_visibility(visible = True)
+        elif mode == 'nn':
+            im_size = self.image_dim ; norm = 255.0
+        elif mode == 'vis_nn':
+            im_size = self.image_dim ; norm = 1.0
+        else:
+            raise AssertionError('Mode must be human, nn , or vis_nn')
+       
+        if self.camera_name == 'angled_cam':
+           
+            image = self.get_image(width= im_size , height = im_size , camera_name = 'angled_cam').transpose()/norm
+            image = image.reshape((3, im_size, im_size))
+            image = np.rot90(image, axes = (-2,-1))
+            final_image = np.transpose(image , [1,2,0])
+            if 'nn' in mode:
+                final_image = final_image[:48 ,10 : 74,:]
+            # elif 'human' in mode:
+            #     final_image = final_image[:285, 60: 440,:]
+
+        if self.hide_goal:
+           self.set_goal_visibility(visible = False)
+        return final_image
+
+
 
 
     def compute_reward(self, actions, obs):
@@ -119,6 +176,10 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
 
         if pickCompletionCriteria():
             self.pickCompleted = True
+
+
+
+       
 
         def grasped():
 

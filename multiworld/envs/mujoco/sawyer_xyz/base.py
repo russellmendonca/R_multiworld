@@ -66,7 +66,8 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
     def __init__(
             self,
             *args,
-            #hand_low = (-0.5, 0.25, 0) for WSG
+            #hand_low = (-0.5, 0.25, 0),
+            hand_type = 'parallel_v1',
             hand_low=(-0.5, 0.4, 0.05),
             hand_high=(0.5, 1, 0.5),
             action_scale=1/100,
@@ -74,6 +75,11 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             **kwargs
     ):
         super().__init__(*args, **kwargs)
+        if hand_type == 'parallel_v1':
+        	hand_low=(-0.5, 0.4, 0.05)
+        elif hand_type == 'weiss':
+        	hand_low = (-0.5, 0.25, 0.05)
+
         self.action_scale = action_scale
         self.action_zangle_scale = action_zangle_scale
         self.hand_low = np.array(hand_low)
@@ -98,10 +104,6 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
 
         zangle_delta = action[3] * self.action_zangle_scale
-        
-        #zangle_delta = np.random.uniform(-0.1, 0.1)
-
-       
         new_mocap_zangle = quat_to_zangle(self.data.mocap_quat[0]) + zangle_delta
 
 

@@ -31,6 +31,7 @@ Usage:
         <mesh name="GUIDE_WSG50_110" file="sawyer/GUIDE_WSG50_110.stl" scale="0.001 0.001 0.001" />
         <mesh name="WSG-FMF" file="sawyer/WSG-FMF.stl" scale="0.001 0.001 0.001" />
 
+       
         <texture name='wood_63' file='wood/pic_6_63.png' />
         <material shininess = '.3' specular="1" name="wood_63" texture="wood_63" />
 
