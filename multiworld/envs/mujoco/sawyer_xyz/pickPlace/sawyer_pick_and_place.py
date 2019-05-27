@@ -55,7 +55,7 @@ class SawyerPickPlaceEnv( SawyerPushEnv):
     
     def step(self, action):
         
-        action = [0,0,-1 , -1]
+       
         self.set_xyz_action(action[:3])
         self.do_simulation([action[-1], -action[-1]])
         #self.do_simulation([1,-1])

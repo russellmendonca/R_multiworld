@@ -20,9 +20,8 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
             goal_low=np.array([0]),
             goal_high=np.array([1.58825]),
 
-            #hand_init_pos=(0, 0.4, 0.05),
-            hand_init_pos = (0, 0.5, 0.3) ,
-            fixed_door_pos = (0 , 1, 0.3),
+            hand_init_pos = (0, 0.4, 0.1) ,
+            fixed_door_pos = (0 , 1.0, 0.3),
             image = False,
             doorHalfWidth=0.2,
             mpl = 100,
@@ -45,20 +44,17 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         self.max_path_length = mpl
 
         self.doorHalfWidth = doorHalfWidth
-        self.fixed_door_pos = np.array([0, 1,0.3])
-        self.hand_init_pos = np.array(hand_init_pos)
+        self.fixed_door_pos = np.array([0, 1.0, 0.3])
+        self.hand_init_pos = np.array([0, 0.4, 0.1])
         self.info_logKeys = ['angleDelta' , 'doorAngle' , 'doorAngleTarget']
       
         import pickle
-        #tasks = np.array(pickle.load(open('/home/russell/multiworld/multiworld/envs/goals/Door_60X20X20.pkl', 'rb'))) 
-        #tasks = np.array(pickle.load(open('/root/code/multiworld/multiworld/envs/goals/Door_60X20X20.pkl', 'rb')))   
-
         self.tasks = np.array(tasks)
         self.num_tasks = len(tasks)
 
         self.action_space = Box(
-            np.array([-1, -1, -1, -1]),
-            np.array([1, 1, 1, 1]),
+            np.array([-1, -1, -1]),
+            np.array([1, 1, 1]),
             dtype=np.float32
         )
         self.hand_and_door_space = Box(
@@ -87,8 +83,8 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
     def step(self, action):
 
         self.set_xyz_action(action[:3])
-
-        self.do_simulation([action[-1], -action[-1]])
+       
+        self.do_simulation([0, 0])
 
         self._set_goal_marker()
         # The marker seems to get reset every time you do a simulation
@@ -108,7 +104,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         e = self.get_endeff_pos()
         b = self.get_site_pos('doorGraspPoint')
         flat_obs = np.concatenate((e, b))
-
+      
         doorAngle = self.data.get_joint_qpos('doorjoint')
 
         return dict(
@@ -131,7 +127,7 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
             raise AssertionError('Mode must be human, nn , or vis_nn')
 
         
-        image = self.get_image(width= im_size , height = im_size , camera_name = 'door_diff').transpose()/norm
+        image = self.get_image(width= im_size , height = im_size , camera_name = 'angled_cam').transpose()/norm
         image = image.reshape((3, im_size, im_size))
         image = np.rot90(image, axes = (-2,-1))
         final_image = np.transpose(image , [1,2,0])
@@ -142,12 +138,10 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
    
 
     def _set_door_xyz(self, doorPos):
-
+       
         self.model.body_pos[-1] = doorPos
 
     def sample_tasks(self, num_tasks):
-
-        # task_idx = np.random.randint(0, self.num_tasks, size = )
 
         indices = np.random.choice(np.arange(self.num_tasks), num_tasks)
 
@@ -158,8 +152,6 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         angle = self._state_goal
         door_pos = self.door_init_pos
 
-        # import ipdb
-        # ipdb.set_trace()
         goal_x = door_pos[0] + self.doorHalfWidth * (1 - np.cos(angle))
         goal_y = door_pos[1] - self.doorHalfWidth * np.sin(angle)
         goalSitePos = np.array([goal_x, goal_y, door_pos[2]])
@@ -176,7 +168,6 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         else:
             self.door_init_pos = self.fixed_door_pos
 
-      
         self._set_goal_marker() 
 
     def reset_agent_and_object(self):
@@ -250,10 +241,9 @@ class SawyerDoorOpenEnv(SawyerXYZEnv):
         doorAngle = self.data.get_joint_qpos('doorjoint')
 
         doorOpenRew = doorOpenReward(doorAngle)
-
-        reward = graspRew + doorOpenRew
+        #reward = graspRew + doorOpenRew
         
-        #reward = doorOpenRew
+        reward = doorOpenRew
 
         angleDelta = abs(doorAngleTarget - doorAngle)
 

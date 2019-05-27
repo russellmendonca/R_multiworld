@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <mujoco>
     <include file="shared_config.xml"></include>
+
+      <asset>
+        <texture type="skybox" builtin="gradient" width="100" height="100" rgb1="1 1 1" rgb2="1 1 1" />
+    </asset>
     <worldbody>
         <include file="sawyer_xyz_base.xml"></include>
 
@@ -32,45 +36,45 @@
             />
         </body>
 
-        <site name="goal1" pos="-0.1 0.75 0.02" size="0.02"
+       <!--  <site name="goal1" pos="-0.1 0.75 0.02" size="0.02"
               rgba="1 0.5 0.5 1"/>
 
-        <site name="goal2" pos="0.0 0.77 0.02" size="0.02"
+        <site name="goal2" pos="0.0 0.8 0.02" size="0.02"
               rgba="1 0.5 0.5 1"/>
 
         <site name="goal3" pos="0.1 0.75 0.02" size="0.02"
               rgba="1 0.5 0.5 1"/>
-
+ -->
         <body name="door" pos="0.0 1.0 0.3"  euler='0 0 -1.57'>
             <joint name="doorjoint" pos="0 0.2 0" axis="0 0 1" type="hinge" limited="true" range="-3 3" damping="100" armature="0" />
             <geom type="box" name='doorPlane' pos="0 0 0" size="0.01 0.2 0.2"  contype="1" conaffinity="1" material="wood_106"/>
             <geom type="box" name='doorHandle1' pos="0.05 -0.2 0" size="0.06 0.01 0.01" rgba=".75 .75 .75 1" contype="1" conaffinity="1"/>
             <geom type="box" name='doorHandle2' pos="0.1 -0.1 0" size="0.01 0.1 0.01" rgba=".75 .75 .75 1" contype="1" conaffinity="1"/>
-            <site name="doorGraspPoint" pos="0.1 -0.1 0" size="0.02" rgba="1 0 0 1"/>
+            <site name="doorGraspPoint" pos="0.1 -0.1 0" size="0.02" rgba="1 0 0 0"/>
         </body>
 
 
 
-        <body name="drawer" pos="0.0 0.97 0"  euler='0 0 -1.57'>
+        <body name="drawer" pos="0.0 1 0"  euler='0 0 -1.57'>
 
           <body name='movable_drawer' pos="0 0 0">
             <joint name="drawer_joint" pos="0 0 0" axis="1 0 0" type="slide" limited="true" range="-3 3" damping="100" armature="0" />
 
             <geom type="box" name='bottom' pos="0 0.0 0.01" size="0.09 0.12 0.005" rgba=".75 .75 .75 1" contype="1" conaffinity="1"/>
-            <geom type="box" name='w1' pos="0.1 0.0 0.04" size="0.005 0.13 0.04" rgba=".75 .75 .75 1" contype="1" conaffinity="1"/>
+            <geom type="box" name='w1' pos="0.1 0.0 0.04" size="0.005 0.13 0.04" rgba="1 .75 .75 1" contype="1" conaffinity="1"/>
             <geom type="box" name='w2' pos="0.005 -0.125 0.04" size="0.1 0.005 0.04" rgba=".75 .75 .75 1" contype="1" conaffinity="1"/>
             <geom type="box" name='w3' pos="0.005 0.125 0.04" size="0.1 0.005 0.04" rgba=".75 .75 .75 1" contype="1" conaffinity="1"/>
 
-            <geom type="box" name='h1' pos="0.145 0.0 0.03" size="0.005 0.035 0.01" rgba="0 0 0 0.5" contype="1" conaffinity="1"/>
+            <geom type="box" name='h1' pos="0.145 0.0 0.03" size="0.005 0.035 0.01" rgba="0 0 0 1" contype="1" conaffinity="1"/>
             <geom type="box" name='h2' pos="0.125 -0.04 0.03" size="0.025 0.005 0.01" rgba="0 0 0 1" contype="1" conaffinity="1"/>
             <geom type="box" name='h3' pos="0.125 0.04 0.03" size="0.025 0.005 0.01" rgba="0 0 0 1" contype="1" conaffinity="1"/>
-            <site name="drawerGraspPoint" pos="0.15 0 0.03" size="0.02" rgba="1 0 0 1"/>
+            <site name="drawerGraspPoint" pos="0.15 0 0.03" size="0.02" rgba="1 0 0 0"/>
 
           </body>
 
-          <geom type="box" name='outer_w2' pos="0.01 -0.14 0.05" size="0.1 0.01 0.05" rgba="0 0 1 1" contype="1" conaffinity="1"/>
-          <geom type="box" name='outer_w3' pos="0.01 0.14 0.05" size="0.1 0.01 0.05" rgba="0 0 1 1" contype="1" conaffinity="1"/>
-          <geom type="box" name='top' pos="0 0.0 0.095" size="0.1 0.13 0.005" rgba="0 0 1 1" contype="1" conaffinity="1"/>
+          <geom type="box" name='outer_w2' pos="0.01 -0.14 0.05" size="0.1 0.01 0.05"  contype="1" conaffinity="1" material="metal_51"/>
+          <geom type="box" name='outer_w3' pos="0.01 0.14 0.05" size="0.1 0.01 0.05"  contype="1" conaffinity="1" material="metal_51"/>
+          <geom type="box" name='top' pos="0 0.0 0.095" size="0.1 0.13 0.005" rgba='.3 .3 .3 1' contype="1" conaffinity="1" material="metal_51"/>
 
         
 
@@ -79,7 +83,7 @@
       <!--   </body> -->
 
         <site name="goal" pos="0 0.82 0.03" size="0.02"
-          rgba="0 0.7 0 1"/>
+          rgba="0 0.7 0 0"/>
 
 
       

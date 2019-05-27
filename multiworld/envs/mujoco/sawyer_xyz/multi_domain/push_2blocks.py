@@ -18,7 +18,7 @@ def zangle_to_quat(zangle):
 	"""
 	return (Quaternion(axis=[0,1,0], angle=np.pi) * Quaternion(axis=[0, 0, -1], angle= zangle)).elements
 
-class Sawyer_MultiDomainEnv( SawyerXYZEnv):
+class Sawyer_MultiPushEnv( SawyerXYZEnv):
 	def __init__(
 			self,
 			obj_low=None,
@@ -27,7 +27,7 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			#tasks = None,
 			goal_low= np.array([-0.5 ,  0.4 ,  0.05 , None]),
 			goal_high=np.array([0.5, 1. , 0.5 , None]),
-			hand_init_pos = (0, 0.4, 0.1),
+			hand_init_pos = (0, 0.4, 0.05),
 			doorHalfWidth=0.2,
 			rewMode = 'posPlace',
 			indicatorDist = 0.05,
@@ -54,15 +54,6 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 		if goal_low is None:
 			goal_low = self.hand_low
 
-		#if doorGrasp_low is None:
-		door_grasp_low = self.hand_low
-		#if doorGrasp_high is None:
-		door_grasp_high = self.hand_high
-
-		self.push_task_id = 0
-		self.door_task_id = 1
-
-		self.doorHalfWidth = doorHalfWidth
 		self.camera_name = camera_name
 		self.objHeight = self.model.body_pos[-1][2]
 		#assert self.objHeight != 0
@@ -70,7 +61,6 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 		self.image = image
 
 		self.image_dim = image_dim
-		
 		self.tasks = np.array(tasks)
 
 		self.num_tasks = len(tasks)
@@ -82,13 +72,13 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			np.array([1, 1, 1]),
 		)
 		self.hand_env_space = Box(
-			np.hstack((self.hand_low, obj_low , door_grasp_low)),
-			np.hstack((self.hand_high, obj_high, door_grasp_high)),
+			np.hstack((self.hand_low, obj_low , obj_low)),
+			np.hstack((self.hand_high, obj_high, obj_high)),
 		)
 		self.goal_space = Box(goal_low, goal_high)
 		#self.initialize_camera(sawyer_pusher_cam)
-		self.push_info_logKeys = ['placeDist']
-		self.door_info_logKeys = ['angleDelta']
+		self.info_logKeys = ['placeDist', 'reachDist']
+		#self.door_info_logKeys = ['angleDelta']
 
 		self.hide_goal = hide_goal
 		if self.image:
@@ -120,7 +110,7 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 		#Remember to set the right limits in the base file (right line needs to be commented out)
 		
 		self.reset_mocap_quat = [1,0,1,0]
-		return get_asset_full_path('sawyer_xyz/push_door.xml')
+		return get_asset_full_path('sawyer_xyz/push_2blocks.xml')
 
 		############################# WSG GRIPPER #############################
 		#self.reset_mocap_quat = zangle_to_quat(np.pi/2) 
@@ -130,8 +120,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 
 	def step(self, action):
 
-		print(self.data.get_joint_qpos('drawer_joint'))
-		action = [0,1,-0.1]
+	
+		
 		self.set_xyz_action(action[:3])
 		self.do_simulation([0,0])
 		ob = self._get_obs()
@@ -154,10 +144,10 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 		
 
 		hand = self.get_endeff_pos()
-		objPos =  self.get_body_com("obj")
-		doorGraspPoint_pos = self.get_site_pos('doorGraspPoint')
+		obj1Pos =  self.get_body_com("obj1")
+		obj2Pos = self.get_body_com("obj2")
 		
-		flat_obs = np.concatenate((hand, objPos , doorGraspPoint_pos))
+		flat_obs = np.concatenate((hand, obj1Pos , obj2Pos))
 
 		if self.image:
 			image = self.render(mode = 'nn')
@@ -168,7 +158,7 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			return dict(        
 				state_observation=flat_obs,
 				state_desired_goal=self._state_goal,        
-				state_achieved_goal=objPos,
+				state_achieved_goal=self._state_goal,
 			)
 
 	def render(self, mode = 'human'):
@@ -211,23 +201,6 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			goal[:3]
 		)
 
-	def _set_door_goal_marker(self):
-
-		angle = self._state_goal[0]
-		door_pos = self.door_init_pos
-
-		# import ipdb
-		# ipdb.set_trace()
-		goal_x = door_pos[0] + self.doorHalfWidth * (1 - np.cos(angle))
-		goal_y = door_pos[1] - self.doorHalfWidth * np.sin(angle)
-		goalSitePos = np.array([goal_x, goal_y, door_pos[2]])
-
-		self.data.site_xpos[self.model.site_name2id('goal')] = (
-			goalSitePos
-		)
-
-
-
 	def set_goal_visibility(self , visible = False):
 
 		# site_id = self.model.site_name2id('goal')
@@ -237,90 +210,56 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 		#     self.model.site_rgba[site_id][-1] = 0
 		pass
 
-
-
-	def set_obs_manual(self, obs):
-
-		assert len(obs) == 6
-		handPos = obs[:3] ; objPos = obs[3:]
-		self.data.set_mocap_pos('mocap', handPos)
-		self.do_simulation(None)
-		self._set_obj_xyz(objPos)
-		
-
-   
-
 	def sample_tasks(self, num_tasks):
 
 		indices = np.random.choice(np.arange(self.num_tasks), num_tasks , replace = False)
 		return self.tasks[indices]
 
-	# def adjust_goalPos(self, orig_goal_pos):
-
-	#     return np.array([orig_goal_pos[0], orig_goal_pos[1], self.objHeight])
-	# def adjust_initObjPos(self, orig_init_pos):
-	#     #This is to account for meshes for the geom and object are not aligned
-	#     #If this is not done, the object could be initialized in an extreme position
-	#     diff = self.get_body_com('obj')[:2] - self.data.get_geom_xpos('objGeom')[:2]
-	#     adjustedPos = orig_init_pos[:2] + diff
-
-	#     #The convention we follow is that body_com[2] is always 0, and geom_pos[2] is the object height
-	#     return [adjustedPos[0], adjustedPos[1], 0]
-
 	def reset_task(self, task):
 		self.change_task(task)
 
 
-	def _set_door_xyz(self, pos):
-
-		doorIdx = self.model.body_name2id('door')
-		self.model.body_pos[doorIdx] = pos
-
-	def _set_drawer_xyz(self, pos):
-
-		drawerIdx = self.model.body_name2id('drawer')
-		self.model.body_pos[drawerIdx] = pos
-
-			  
-	def _set_obj_xyz(self, pos):
+	def _set_obj1_xyz(self, pos):
 		qpos = self.data.qpos.flat.copy()
 		qvel = self.data.qvel.flat.copy()
 		qpos[9:12] = pos.copy()
 		qvel[9:15] = 0
 		self.set_state(qpos, qvel)
 
-	def change_door_task(self, task):
+	def _set_obj2_xyz(self, pos):
+		qpos = self.data.qpos.flat.copy()
+		qvel = self.data.qvel.flat.copy()
+		import ipdb
+		ipdb.set_trace()
 
-		self._state_goal = np.concatenate([ task['padded_target_angle'] , [self.door_task_id] ])
-		
+		qpos[9:12] = pos.copy()
+		qvel[9:15] = 0
+		self.set_state(qpos, qvel)
 
+	
 	def change_push_task(self, task):
 
-		self._state_goal = np.concatenate([ task['goal_pos'] , [self.push_task_id] ])
+		self._state_goal = task['goal_pos']
 		
-		self.origPlacingDist = np.linalg.norm( self.obj_init_pos[:2] - self._state_goal[:2])
+		if self.task_type == 'push_1':
+			self.origPlacingDist = np.linalg.norm( self.obj1_init_pos[:2] - self._state_goal[:2])
+		else:
+			self.origPlacingDist = np.linalg.norm( self.obj2_init_pos[:2] - self._state_goal[:2])
+		
 		self.pickCompleted = False
 
 	def change_task(self, task):
+
 		self.task = task
-		self.obj_init_pos = np.array(task['obj_init_pos'])
-		self._set_obj_xyz(self.obj_init_pos)
-		#self.door_init_pos = task['door_pos']
-		self.door_init_pos = np.array([0, 1, 0.3])
-		self._set_door_xyz(self.door_init_pos)
-
-		# for now drawer location doesn't change
+		self.obj1_init_pos = np.array(task['obj1_init_pos'])
+		self.obj2_init_pos = np.array(task['obj2_init_pos'])
 		
-		if task['task'] == 'push':
-			self.task_type = 'push'
-			self.change_push_task(task)
+		self._set_obj1_xyz(self.obj1_init_pos)
+		#self._set_obj2_xyz(self.obj2_init_pos)
+		
+		self.task_type = task['task']
+		self.change_push_task(task)
 
-		elif task['task'] == 'door':
-			self.task_type = 'door'
-			self.change_door_task(task)
-
-		else:
-			raise AssertionError('Task type must be push or door or drawer')
 	
 	def reset_agent_and_object(self):
 
@@ -362,59 +301,22 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 
 	def compute_reward(self, actions, obs):
 
-		if self.task_type == 'push':
-			self._set_push_goal_marker()
-			return self.compute_push_reward(actions, obs)
+		
+		return self.compute_push_reward(actions, obs , self.task_type)
 
-		elif self.task_type == 'door':
-			self._set_door_goal_marker()
-			return self.compute_door_reward(actions, obs)
-
-
-	def compute_door_reward(self, actions, obs):
-
-		if isinstance(obs, dict):
-			obs = obs['state_observation']
-
-		doorGraspPoint = obs[6:9]
-
-		rightFinger, leftFinger = self.get_site_pos('rightEndEffector'), self.get_site_pos('leftEndEffector')
-		fingerCOM = (rightFinger + leftFinger) / 2
-
-		doorAngleTarget = self._state_goal[0]
-		graspDist = np.linalg.norm(doorGraspPoint - fingerCOM)
-		graspRew = -graspDist
-
-		def doorOpenReward(doorAngle):
-
-			# angleDiff = np.linalg.norm(doorAngle - doorAngleTarget)
-
-			doorRew = 0
-			if graspDist < 0.1:
-
-				if doorAngle <= doorAngleTarget:
-					doorRew = max(10 * doorAngle, 0)
-
-				elif doorAngle > doorAngleTarget:
-					doorRew = max(10 * (doorAngleTarget - (doorAngle - doorAngleTarget)), 0)
-
-			return doorRew
-			#norm = 10* doorAngleTarget
-			#return 10*(doorRew / norm)
-
-		doorAngle = self.data.get_joint_qpos('doorjoint')
-		doorOpenRew = doorOpenReward(doorAngle)
-		reward = graspRew + doorOpenRew
-		#reward = doorOpenRew
-		angleDelta = abs(doorAngleTarget - doorAngle)
-		metrics = {'doorOpenRew': doorOpenRew , 'angleDelta': angleDelta , 'doorAngle' : doorAngle , 'doorAngleTarget': doorAngleTarget , 'task': 'door' , 
-					'reachDist': 0 , 'placeDist': 0 }
-		return [reward, metrics]
-
-	def compute_push_reward(self, actions, obs):
-		   
+	
+	def compute_push_reward(self, actions, obs , task_type):
+		
+		self._set_push_goal_marker()
 		state_obs = obs['state_observation']
-		endEffPos , objPos = state_obs[0:3], state_obs[3:6] 
+
+		endEffPos = state_obs[0:3] 
+
+		if task_type == 'push_1':
+			
+			objPos = state_obs[3:6]
+		else:
+			objPos = state_obs[6:9]
 
 		placingGoal = self._state_goal[:3]
 		rightFinger, leftFinger = self.get_site_pos('rightEndEffector'), self.get_site_pos('leftEndEffector')
@@ -440,10 +342,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 		elif self.rewMode == 'posPlace':
 			reward = -reachDist + 100* max(0, self.origPlacingDist - placeDist)
 
-		doorAngle = self.data.get_joint_qpos('doorjoint')
-
-		metrics = {'reachDist': reachDist , 'placeDist': min(placeDist, self.origPlacingDist*1.5) , 'task': 'push' , 
-					'doorOpenRew': 0 , 'angleDelta': doorAngle , 'doorAngle' : doorAngle , 'doorAngleTarget': 0}
+		
+		metrics = {'reachDist': reachDist , 'placeDist': min(placeDist, self.origPlacingDist*1.5) , 'task': task_type}
 
 		return [reward, metrics] 
 
@@ -455,13 +355,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 
 	def log_diagnostics(self, paths = None, prefix = '', logger = None):
 		
-		push_paths = [path for path in paths if (path['env_infos']['task'][0] == 'push')  ]
-		door_paths = [path for path in paths if (path['env_infos']['task'][0] == 'door')  ]
+		
+		for key in self.info_logKeys:
+			logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
 
-		if push_paths!=[]:
-			for key in self.push_info_logKeys:
-			    logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in push_paths]) )
-
-		if door_paths !=[]:
-			for key in self.door_info_logKeys:
-			    logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in door_paths]) )
+	

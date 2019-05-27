@@ -77,8 +77,11 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         super().__init__(*args, **kwargs)
         if hand_type == 'parallel_v1':
         	hand_low=(-0.5, 0.4, 0.05)
-        elif hand_type == 'weiss':
+        elif hand_type == 'weiss_v1': #for pushing
         	hand_low = (-0.5, 0.25, 0.05)
+
+        elif hand_type == 'weiss_v2': # for coffee
+        	hand_low = (-0.5, 0.25, 0)
 
         self.action_scale = action_scale
         self.action_zangle_scale = action_zangle_scale

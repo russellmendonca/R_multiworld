@@ -18,7 +18,7 @@ def zangle_to_quat(zangle):
     """
     return (Quaternion(axis=[0,1,0], angle=np.pi) * Quaternion(axis=[0, 0, -1], angle= zangle)).elements
 
-class SawyerPushEnv( SawyerXYZEnv):
+class SawyerMultiPushEnv( SawyerXYZEnv):
     def __init__(
             self,
             obj_low=None,
@@ -65,6 +65,8 @@ class SawyerPushEnv( SawyerXYZEnv):
         self.image = image
 
         self.image_dim = image_dim
+        # tasks = [{'type': 'push_1' , 'obj1_init_pos': np.array([0.1, 0.65 , 0.02]) , 'goal': np.array([0.1, 0.75, 0.02]) , 'obj2_init_pos': np.array([-0.1, 0.65 , 0.02])  } , 
+        #          {'type': 'push_2' , 'obj1_init_pos': np.array([0.1, 0.65 , 0.02]) , 'goal': np.array([-0.1, 0.75, 0.02]) , 'obj2_init_pos': np.array([-0.1, 0.65 , 0.02])  }] 
         self.tasks = np.array(tasks)
         self.num_tasks = len(tasks)
         self.rewMode = rewMode
@@ -75,8 +77,8 @@ class SawyerPushEnv( SawyerXYZEnv):
             np.array([1, 1, 1]),
         )
         self.hand_and_obj_space = Box(
-            np.hstack((self.hand_low, obj_low)),
-            np.hstack((self.hand_high, obj_high)),
+            np.hstack((self.hand_low, obj_low , obj_low)),
+            np.hstack((self.hand_high, obj_high , obj_high)),
         )
         self.goal_space = Box(goal_low, goal_high)
         #self.initialize_camera(sawyer_pusher_cam)
@@ -97,8 +99,7 @@ class SawyerPushEnv( SawyerXYZEnv):
     def set_state_obsSpace(self):
         self.observation_space = Dict([           
                 ('state_observation', self.hand_and_obj_space),
-                ('state_desired_goal', self.goal_space),
-                ('state_achieved_goal', self.goal_space)
+                ('state_desired_goal', self.goal_space)
             ])
 
     def get_goal(self):
@@ -109,16 +110,9 @@ class SawyerPushEnv( SawyerXYZEnv):
     @property
     def model_name(self):
         #Remember to set the right limits in the base file (right line needs to be commented out)
-        if self.hand_type == 'parallel_v1':
-            self.reset_mocap_quat = [1,0,1,0]
-            return get_asset_full_path('sawyer_xyz/sawyer_pick_and_place.xml')
-
-        ############################# WSG GRIPPER #############################
-        elif self.hand_type == 'weiss_v1':
-            self.reset_mocap_quat = zangle_to_quat(np.pi/2) 
-            #return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace_mug.xml')
-            return get_asset_full_path('sawyer_xyz/sawyer_wsg_pickPlace.xml')
-
+        
+        self.reset_mocap_quat = [1,0,1,0]
+        return get_asset_full_path('sawyer_xyz/sawyer_multiPush.xml')
 
     def step(self, action):
 
@@ -142,8 +136,10 @@ class SawyerPushEnv( SawyerXYZEnv):
         
 
         hand = self.get_endeff_pos()
-        objPos =  self.get_body_com("obj")
-        flat_obs = np.concatenate((hand, objPos))
+        obj1Pos =  self.get_body_com("obj1")
+        obj2Pos =  self.get_body_com("obj2")
+        flat_obs = np.concatenate((hand, obj1Pos , obj2Pos))
+
 
         if self.image:
             image = self.render(mode = 'nn')
@@ -153,8 +149,7 @@ class SawyerPushEnv( SawyerXYZEnv):
         else:
             return dict(        
                 state_observation=flat_obs,
-                state_desired_goal=self._state_goal,        
-                state_achieved_goal=objPos,
+                state_desired_goal=self._state_goal
             )
 
     def render(self, mode = 'human'):
@@ -205,13 +200,19 @@ class SawyerPushEnv( SawyerXYZEnv):
         #     self.model.site_rgba[site_id][-1] = 0
         pass
 
-
-              
-    def _set_obj_xyz(self, pos):
+    def _set_obj1_xyz(self, pos):
         qpos = self.data.qpos.flat.copy()
         qvel = self.data.qvel.flat.copy()
         qpos[9:12] = pos.copy()
         qvel[9:15] = 0
+        self.set_state(qpos, qvel)
+
+
+    def _set_obj2_xyz(self, pos):
+        qpos = self.data.qpos.flat.copy()
+        qvel = self.data.qvel.flat.copy()
+        qpos[16:19] = pos.copy()
+        qvel[16:22] = 0
         self.set_state(qpos, qvel)
 
     def set_obs_manual(self, obs):
@@ -230,31 +231,32 @@ class SawyerPushEnv( SawyerXYZEnv):
         indices = np.random.choice(np.arange(self.num_tasks), num_tasks , replace = False)
         return self.tasks[indices]
 
-
     def reset_task(self, task):
         self.change_task(task)
 
 
     def change_task(self, task):
        
-        if len(task['goal']) == 3:
-            self._state_goal = np.array(task['goal'])
-        else:
-            self._state_goal = np.concatenate([task['goal'] , [0.02]])
+        
+        self._state_goal = np.array(task['goal_pos'])
         self._set_goal_marker(self._state_goal)
 
-        if len(task['obj_init_pos']) == 3:
-            self.obj_init_pos = np.array(task['obj_init_pos'])
-        else:
-            self.obj_init_pos = np.concatenate([task['obj_init_pos'] , [0.02]])
+        self.obj1_init_pos = np.array(task['obj1_init_pos'])
+        self.obj2_init_pos = np.array(task['obj2_init_pos'])
+
+        self.task_type = task['task']
+        if self.task_type == 'push_1':
        
+            self.origPlacingDist = np.linalg.norm( self.obj1_init_pos[:2] - self._state_goal[:2])
+        else:
+            self.origPlacingDist = np.linalg.norm( self.obj2_init_pos[:2] - self._state_goal[:2])
         
-        self.origPlacingDist = np.linalg.norm( self.obj_init_pos[:2] - self._state_goal[:2])
 
     def reset_agent_and_object(self):
 
-        self._reset_hand()      
-        self._set_obj_xyz(self.obj_init_pos)
+        self._reset_hand()   
+        self._set_obj1_xyz(self.obj1_init_pos)
+        self._set_obj2_xyz(self.obj2_init_pos)
         self.curr_path_length = 0
         self.pickCompleted = False
 
@@ -294,7 +296,11 @@ class SawyerPushEnv( SawyerXYZEnv):
     def compute_reward(self, actions, obs):
            
         state_obs = obs['state_observation']
-        endEffPos , objPos = state_obs[0:3], state_obs[3:6] 
+        endEffPos = state_obs[0:3] 
+        if self.task_type == 'push_1':
+            objPos = state_obs[3:6]
+        else:
+            objPos = state_obs[6:9]
 
         placingGoal = self._state_goal
 
