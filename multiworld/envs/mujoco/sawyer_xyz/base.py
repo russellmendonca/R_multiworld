@@ -93,7 +93,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
     def set_xyzRot_action(self, action):
         action = np.clip(action, -1, 1)
-        
+
         pos_delta = action[:3] * self.action_scale
 
         new_mocap_pos = self.data.mocap_pos + pos_delta[None]
@@ -120,13 +120,13 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         if new_mocap_zangle < 0:
             new_mocap_zangle += 2 * np.pi
 
-       
+
         self.data.set_mocap_quat('mocap', zangle_to_quat(new_mocap_zangle))
-       
+
 
     def set_xyz_action(self, action):
         action = np.clip(action, -1, 1)
-        
+
         pos_delta = action * self.action_scale
         new_mocap_pos = self.data.mocap_pos + pos_delta[None]
         new_mocap_pos[0, :] = np.clip(
@@ -134,8 +134,17 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             self.mocap_low,
             self.mocap_high,
         )
-        
+
 
         self.data.set_mocap_pos('mocap', new_mocap_pos)
 
         self.data.set_mocap_quat('mocap', self.reset_mocap_quat)
+
+    def path_infos(self, paths, metric):
+
+        if type(paths[0]['env_infos']) == dict:
+            raise NotImplementedError
+        else:
+            # SAC based code .........................
+            return  [[i[metric] for i in paths[j]['env_infos']] for j in range(len(paths))]
+

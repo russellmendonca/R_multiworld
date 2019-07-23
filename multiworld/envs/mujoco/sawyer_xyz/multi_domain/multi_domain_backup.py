@@ -32,7 +32,6 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			#tasks = [{'task': 'drawer' , 'obj_pos': np.array([0, 0.52 , 0.02]) , 'goal_pos': np.array([0, 0.81]) }] , 
 			tasks =  [{'task': 'drawer' , 'obj_init_pos': obj_init_pos , 'padded_target_pos': np.array([0.1, 0, 0]) ,  'door_pos': door_pos}] , 
 			#tasks = None,
-			pushRew_weight = 1,
 			goal_low= np.array([-0.5 ,  0.4 ,  0.05 , None]),
 			goal_high=np.array([0.5, 1. , 0.5 , None]),
 			hand_init_pos = (0, 0.4, 0.1),
@@ -54,7 +53,7 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			**kwargs
 		)
 		self.sparse = False
-		self.pushRew_weight = pushRew_weight
+
 
 		if obj_low is None:
 			obj_low = self.hand_low
@@ -255,6 +254,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			goalSitePos
 		)
 
+
+
 	def set_goal_visibility(self , visible = False):
 
 		# site_id = self.model.site_name2id('goal')
@@ -293,6 +294,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 
 	#     #The convention we follow is that body_com[2] is always 0, and geom_pos[2] is the object height
 	#     return [adjustedPos[0], adjustedPos[1], 0]
+
+	
 
 	def _set_door_xyz(self, pos):
 
@@ -432,16 +435,17 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 		def drawerOpenReward(drawerPos):
 
 			# angleDiff = np.linalg.norm(doorAngle - doorAngleTarget)
+
 			drawerRew = 0
 			if graspDist < 0.1:
 
 				if drawerPos <= target:
-					drawerRew = max(drawerPos, 0)/target
+					drawerRew = max(100 * drawerPos, 0)
 
 				elif drawerPos > target:
-					drawerRew = max((target - (drawerPos - target)), 0)/target
+					drawerRew = max(100 * (target - (drawerPos - target)), 0)
 
-			return 10*drawerRew
+			return drawerRew
 			#norm = 10* doorAngleTarget
 			#return 10*(doorRew / norm)
 
@@ -479,18 +483,17 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 
 			# angleDiff = np.linalg.norm(doorAngle - doorAngleTarget)
 			doorRew = 0
-			pointDist = self.doorHalfWidth*np.sin(doorAngle)
-			pointTargetDist = self.doorHalfWidth*np.sin(doorAngleTarget)
-
 			if graspDist < 0.1:
+
 				if doorAngle <= doorAngleTarget:
-					doorRew = max(pointDist, 0)/pointTargetDist
+					doorRew = max(10 * doorAngle, 0)
 
 				elif doorAngle > doorAngleTarget:
-					doorRew = max((pointTargetDist - (pointDist - pointTargetDist)), 0)/pointTargetDist
-			#return doorRew
+					doorRew = max(10 * (doorAngleTarget - (doorAngle - doorAngleTarget)), 0)
+
+			return doorRew
 			#norm = 10* doorAngleTarget
-			return 10*doorRew
+			#return 10*(doorRew / norm)
 
 		doorAngle = self.data.get_joint_qpos('doorjoint')
 		drawerPos = self.data.get_joint_qpos('drawer_joint')
@@ -535,9 +538,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 
 
 		elif self.rewMode == 'posPlace':
-			reward = -reachDist + 10* (max(0, self.origPlacingDist - placeDist)/self.origPlacingDist) * self.pushRew_weight
+			reward = -reachDist + 100* max(0, self.origPlacingDist - placeDist)
 
-		#print(self.pushRew_weight)
 		doorAngle = self.data.get_joint_qpos('doorjoint')
 		drawerPos = self.data.get_joint_qpos('drawer_joint')
 
@@ -550,6 +552,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 
 		return [reward, metrics] 
 
+
+	 
 	def get_diagnostics(self, paths, prefix=''):
 		statistics = OrderedDict()       
 		return statistics
@@ -565,6 +569,8 @@ class Sawyer_MultiDomainEnv( SawyerXYZEnv):
 			push_paths = [path for path in paths if (path['env_infos']['task'][0] == 'push')  ]
 			door_paths = [path for path in paths if (path['env_infos']['task'][0] == 'door')  ]
 			drawer_paths = [path for path in paths if (path['env_infos']['task'][0] == 'drawer')  ]
+
+
 			if push_paths!=[]:
 				for key in self.push_info_logKeys:
 				    logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in push_paths]) )

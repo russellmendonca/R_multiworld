@@ -30,4 +30,4 @@ def gen_cheetahGoals(fileName , num_tasks = 100):
 	pickle.dump(tasks, fobj)
 	fobj.close()
 
-gen_cheetahGoals('hc_vel_mean1_std1_v1')
+gen_cheetahGoals('hc_vel_mean1_std1_v2')

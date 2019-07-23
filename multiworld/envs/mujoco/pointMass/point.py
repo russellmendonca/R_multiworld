@@ -9,7 +9,9 @@ import numpy as np
 
 class PointEnv(MujocoEnv, Serializable):
 
-    def __init__(self, tasks = [{'goalPos' : [0.2, 0] }] , init_pos = [0,0] , goal_pos = [0.2, 0], mpl = 200, *args, **kwargs):
+    def __init__(self, tasks = [{'goalPos' : [0.2, 0] }] , mode_1d = False,  \
+                    init_pos = [0,0] , goal_pos = [0.2, 0], mpl = 200,
+                    change_task_every_episode = False,  *args, **kwargs):
 
         self.quick_init(locals())    
         
@@ -18,15 +20,17 @@ class PointEnv(MujocoEnv, Serializable):
        
         self.tasks = np.array(tasks)
         self.num_tasks = len(self.tasks)
-        self.goalPos = self.tasks[0]['goalPos']
+        self.task = self.tasks[0]
         self.curr_path_length = 0
         self.max_path_length = mpl
+        self.mode_1d = mode_1d
+        self.change_task_every_episode = change_task_every_episode
 
         MujocoEnv.__init__(self, model_name, frame_skip=1, automatically_set_spaces=True)
         #Serializable.__init__(self, *args, **kwargs)
 
         self.info_logKeys = ['targetDist']
-        self.reset()
+        #self.reset()
 
         # self.get_viewer()
         # self.viewer_setup()
@@ -61,14 +65,16 @@ class PointEnv(MujocoEnv, Serializable):
     def step(self, action):
         
         action = np.clip(action , -1,1)
+        if self.mode_1d:
+            action[1] = 0
+
         self.do_simulation(action)
         
         ballPos = self.get_body_com("point")
-        goalPos = self.goalPos
+        goalPos = self.task['goalPos']
         obs = self._get_obs()
-        #print(np.linalg.norm(ballPos - goalPos))
+        
 
-    
         reward = -np.linalg.norm(ballPos[:2] - goalPos[:2])
         self.curr_path_length +=1
 
@@ -77,6 +83,7 @@ class PointEnv(MujocoEnv, Serializable):
         else:
             done = False
 
+       
         return obs, reward, done, {'targetDist': -reward}
 
     def _set_obj(self, pos):
@@ -100,31 +107,51 @@ class PointEnv(MujocoEnv, Serializable):
     def sample_tasks(self, num_tasks):
 
         indices = np.random.choice(np.arange(self.num_tasks), num_tasks)
+    
         return self.tasks[indices]
 
     def change_task(self, task):
 
-        self.goalPos = task['goalPos']
+
+        self.task = task
+        self._set_goal_marker(np.concatenate([task['goalPos'] , [0.02]]))
 
     def reset_agent_and_object(self):
  
         self._set_obj(self.obj_init_pos)
         self.curr_path_length = 0
 
+
+    def reset_task(self, task_id):
+        self.reset(int(task_id))
+
     def reset(self , reset_args = None):
         self.sim.reset()
-        if reset_args == None:
+        if self.change_task_every_episode:
             task = self.sample_tasks(1)[0]
+
+        elif reset_args == None:
+            task = self.task
+        
         else:
             assert type(reset_args) == int
-            task = self.tasks[reset_args]
-       
+            task = self.tasks[reset_args] 
+
         self.change_task(task)
         self.reset_agent_and_object()
         return self._get_obs()
 
     def log_diagnostics(self, paths = None, prefix = '', logger = None):
 
-        for key in self.info_logKeys:
-            logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
+        if type(paths[0]['env_infos']) == dict:
+            #TRPO based code .......................
+            for key in self.info_logKeys:
+                logger.record_tabular(prefix + 'last_'+key, np.mean([path['env_infos'][key][-1] for path in paths]) )
+
+        else:
+            #SAC based code .........................
+            for key in self.info_logKeys:
+              
+                nested_list = [[i[key] for i in paths[j]['env_infos']] for j in range(len(paths))]
+                logger.record_tabular(prefix + 'last_'+key, np.mean([_list[-1] for _list in nested_list]) )
       

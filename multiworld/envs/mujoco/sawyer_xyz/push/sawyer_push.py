@@ -189,6 +189,7 @@ class SawyerPushEnv( SawyerXYZEnv):
 
     def _set_goal_marker(self, goal):
         """
+        
         This should be use ONLY for visualization. Use self._state_goal for
         logging, learning, etc.
         """
